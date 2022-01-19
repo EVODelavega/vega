@@ -8,6 +8,7 @@ import (
 
 	snapshot "code.vegaprotocol.io/protos/vega/snapshot/v1"
 
+	"code.vegaprotocol.io/vega/assets"
 	bmock "code.vegaprotocol.io/vega/broker/mocks"
 	"code.vegaprotocol.io/vega/execution"
 	"code.vegaprotocol.io/vega/execution/mocks"
@@ -41,7 +42,12 @@ func createEngine(t *testing.T) (*execution.Engine, *gomock.Controller) {
 	statevar.EXPECT().AddStateVariable(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	statevar.EXPECT().NewEvent(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	// @TODO create assets mock, and pass it in to the constructor below
-	return execution.NewEngine(log, executionConfig, timeService, collateralService, oracleService, broker, statevar, nil), ctrl
+	asset := mocks.NewMockAssets(ctrl)
+	asset.EXPECT().Get(gomock.Any()).AnyTimes().DoAndReturn(func(a string) (*assets.Asset, error) {
+		as := NewAssetStub(a, 0)
+		return as, nil
+	})
+	return execution.NewEngine(log, executionConfig, timeService, collateralService, oracleService, broker, statevar, asset), ctrl
 }
 
 func TestEmptyMarkets(t *testing.T) {
