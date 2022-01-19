@@ -113,6 +113,7 @@ func newExecutionTestSetup() *executionTestSetup {
 
 	stateVarEngine := stubs.NewStateVar()
 	execsetup.timeService.NotifyOnTick(stateVarEngine.OnTimeTick)
+	// @TODO stub assets engine and pass it in
 
 	execsetup.executionEngine = newExEng(
 		execution.NewEngine(
@@ -123,6 +124,7 @@ func newExecutionTestSetup() *executionTestSetup {
 			execsetup.oracleEngine,
 			execsetup.broker,
 			stateVarEngine,
+			nil, // assets
 		),
 		execsetup.broker,
 	)

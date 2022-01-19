@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"code.vegaprotocol.io/protos/vega"
+	"code.vegaprotocol.io/vega/assets"
 	"code.vegaprotocol.io/vega/events"
 	"code.vegaprotocol.io/vega/libs/crypto"
 	"code.vegaprotocol.io/vega/logging"
@@ -63,6 +64,11 @@ type StateVarEngine interface {
 	ReadyForTimeTrigger(asset, mktID string)
 }
 
+//go:generate go run github.com/golang/mock/mockgen -destination mocks/assets_mock.go -package mocks code.vegaprotocol.io/vega/execution Assets
+type Assets interface {
+	Get(assetID string) (*assets.Asset, error)
+}
+
 // Engine is the execution engine.
 type Engine struct {
 	Config
@@ -72,6 +78,7 @@ type Engine struct {
 	marketsCpy []*Market
 	collateral Collateral
 	idgen      *IDgenerator
+	assets     Assets
 
 	broker         Broker
 	time           TimeService
@@ -136,6 +143,7 @@ func NewEngine(
 	oracle OracleEngine,
 	broker Broker,
 	stateVarEngine StateVarEngine,
+	assets Assets,
 ) *Engine {
 	// setup logger
 	log = log.Named(namedLogger)
@@ -146,6 +154,7 @@ func NewEngine(
 		markets:                      map[string]*Market{},
 		time:                         ts,
 		collateral:                   collateral,
+		assets:                       assets,
 		idgen:                        NewIDGen(),
 		broker:                       broker,
 		oracle:                       oracle,
@@ -344,6 +353,7 @@ func (e *Engine) submitMarket(ctx context.Context, marketConfig *types.Market) e
 		e.idgen,
 		mas,
 		e.stateVarEngine,
+		e.assets.Get(asset),
 	)
 	if err != nil {
 		e.log.Error("failed to instantiate market",

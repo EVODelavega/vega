@@ -40,7 +40,8 @@ func createEngine(t *testing.T) (*execution.Engine, *gomock.Controller) {
 	statevar := mocks.NewMockStateVarEngine(ctrl)
 	statevar.EXPECT().AddStateVariable(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	statevar.EXPECT().NewEvent(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-	return execution.NewEngine(log, executionConfig, timeService, collateralService, oracleService, broker, statevar), ctrl
+	// @TODO create assets mock, and pass it in to the constructor below
+	return execution.NewEngine(log, executionConfig, timeService, collateralService, oracleService, broker, statevar, nil), ctrl
 }
 
 func TestEmptyMarkets(t *testing.T) {

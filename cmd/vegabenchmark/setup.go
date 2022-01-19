@@ -172,6 +172,7 @@ func setupVega() (*processor.App, processor.Stats, error) {
 		oraclesM,
 		broker,
 		stateVarEngine,
+		assets,
 	)
 
 	netParams := netparams.New(log, netparams.NewDefaultConfig(), broker)
