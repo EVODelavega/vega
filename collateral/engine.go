@@ -977,10 +977,33 @@ func (e *Engine) MarkToMarket(ctx context.Context, marketID string, transfers []
 	}
 
 	if !settle.Balance.IsZero() {
+		e.log.Info("Transfer info",
+			logging.Int("number of transfers", len(transfers)),
+			logging.Int("win index", winidx),
+		)
+		e.printTransfers(winidx, transfers)
 		e.log.Panic("Settlement balance non-zero at the end of MTM settlement", logging.BigUint("settlement-balance", settle.Balance))
 		return nil, nil, ErrSettlementBalanceNotZero
 	}
 	return marginEvts, responses, nil
+}
+
+func (e *Engine) printTransfers(winidx int, transfers []events.Transfer) {
+	e.log.Info("Printing loss transfer events")
+	for _, ev := range transfers[:winidx] {
+		e.log.Info("Loss transfer",
+			logging.String("party", ev.Party()),
+			logging.BigUint("amount", ev.Transfer().Amount.Amount),
+		)
+	}
+	e.log.Info("Printing win transfers")
+	for _, ev := range transfers[winidx:] {
+		e.log.Info("Win transfer",
+			logging.String("party", ev.Party()),
+			logging.BigUint("amount", ev.Transfer().Amount.Amount),
+		)
+	}
+
 }
 
 // GetPartyMargin will return the current margin for a given party.

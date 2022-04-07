@@ -245,10 +245,10 @@ func (e *Engine) SettleMTM(ctx context.Context, markPrice *num.Uint, positions [
 			wins = append(wins, mtmTransfer)
 			winTotal.AddSum(mtmShare)
 			winTotalDec = winTotalDec.Add(mtmDShare)
+			mtmDec = mtmDShare
+			largestShare = mtmTransfer
 			// mtmDec is zero at this point, this will always be the largest winning party at this point
 			if mtmShare.IsZero() {
-				mtmDec = mtmDShare
-				largestShare = mtmTransfer
 				zeroShares = append(zeroShares, mtmTransfer)
 				zeroAmts = true
 			}
@@ -307,10 +307,10 @@ func (e *Engine) SettleMTM(ctx context.Context, markPrice *num.Uint, positions [
 			if mtmShare.IsZero() {
 				zeroShares = append(zeroShares, mtmTransfer)
 				zeroAmts = true
-				if mtmDShare.GreaterThan(mtmDec) {
-					mtmDec = mtmDShare
-					largestShare = mtmTransfer
-				}
+			}
+			if mtmDShare.GreaterThan(mtmDec) {
+				mtmDec = mtmDShare
+				largestShare = mtmTransfer
 			}
 		} else if mtmShare.IsZero() {
 			// zero value loss
@@ -323,27 +323,30 @@ func (e *Engine) SettleMTM(ctx context.Context, markPrice *num.Uint, positions [
 		}
 	}
 	delta := num.Zero().Sub(lossTotal, winTotal)
-	if !delta.IsZero() && zeroAmts {
-		// there are more transfers from losses than we pay out to wins, but some winning parties have zero transfers
-		// this delta should == combined win decimals, let's sanity check this!
-		if winTotalDec.LessThan(lossTotalDec) {
-			e.log.Panic("There's less MTM wins than losses, even accounting for decimals",
-				logging.Decimal("total loss", lossTotalDec),
-				logging.Decimal("total wins", winTotalDec),
-			)
-		}
-		// now let's check the delta can be distributed evenly
-		deltaI := delta.Uint64()
-		if zeroes := uint64(len(zeroShares)); deltaI < zeroes {
-			parts := num.NewUint(deltaI / zeroes) // everyone gets this share
-			deltaI = deltaI % zeroes
-			delta = num.NewUint(deltaI) // this is the remainder to set on the largest share
-			for _, transfer := range zeroShares {
-				e.winSocialisationUpdate(transfer, parts)
+	if !delta.IsZero() {
+		if zeroAmts {
+			// there are more transfers from losses than we pay out to wins, but some winning parties have zero transfers
+			// this delta should == combined win decimals, let's sanity check this!
+			if winTotalDec.LessThan(lossTotalDec) {
+				e.log.Panic("There's less MTM wins than losses, even accounting for decimals",
+					logging.Decimal("total loss", lossTotalDec),
+					logging.Decimal("total wins", winTotalDec),
+				)
 			}
-		}
-		if largestShare == nil && len(zeroShares) > 0 {
-			largestShare = zeroShares[0]
+			// now let's check the delta can be distributed evenly
+			deltaI := delta.Uint64()
+			if zeroes := uint64(len(zeroShares)); deltaI < zeroes {
+				parts := num.NewUint(deltaI / zeroes) // everyone gets this share
+				deltaI = deltaI % zeroes
+				delta = num.NewUint(deltaI) // this is the remainder to set on the largest share
+				for _, transfer := range zeroShares {
+					e.winSocialisationUpdate(transfer, parts)
+				}
+			}
+			if largestShare == nil && len(zeroShares) > 0 {
+				// this shouldn't be needed anymore at this point
+				largestShare = zeroShares[0]
+			}
 		}
 		// delta is whatever amount the largest share win party gets, this shouldn't be too much
 		// @TODO maybe iterate over the slice and give all of the parties 1, until nothing is left?

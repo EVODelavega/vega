@@ -331,6 +331,10 @@ func InitializeScenario(s *godog.ScenarioContext) {
 	})
 
 	// Debug steps
+	s.Step(`^debug all events$`, func() error {
+		steps.DebugAllEvents(execsetup.broker, execsetup.log)
+		return nil
+	})
 	s.Step(`^debug accounts$`, func() error {
 		steps.DebugAccounts(execsetup.broker, execsetup.log)
 		return nil

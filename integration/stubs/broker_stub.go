@@ -124,6 +124,21 @@ func (b *BrokerStub) GetAllEvents() []events.Event {
 	return evs
 }
 
+func (b *BrokerStub) GetAllEventsMap() map[events.Type][]events.Event {
+	b.mu.Lock()
+	r := make(map[events.Type][]events.Event, len(b.data))
+	for t, s := range b.data {
+		if len(s) == 0 {
+			continue
+		}
+		// copy event slice
+		r[t] = make([]events.Event, 0, len(s))
+		r[t] = append(r[t], s...)
+	}
+	b.mu.Unlock()
+	return r
+}
+
 func (b *BrokerStub) GetBatch(t events.Type) []events.Event {
 	b.mu.Lock()
 	r := b.data[t]
