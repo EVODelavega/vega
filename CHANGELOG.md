@@ -15,6 +15,7 @@
 - [5277](https://github.com/vegaprotocol/vega/issues/5277) - Updating a market should default auction extension to 1
 - [5284](https://github.com/vegaprotocol/vega/issues/5284) - price monitoring past prices are now included in the snapshot
 - [5294](https://github.com/vegaprotocol/vega/issues/5294) - Parse timestamps oracle in market proposal validation
+- [5297](https://github.com/vegaprotocol/vega/issues/5297) - Assure min/max price always accurate
 
 
 ## 0.50.2
