@@ -31,6 +31,14 @@
 - [6519](https://github.com/vegaprotocol/vega/issues/6519) - Fix errors in the ledger entries `GraphQL` query.
 - [6515](https://github.com/vegaprotocol/vega/issues/6515) - Required properties in OpenRPC documentation are marked as such
 - [6234](https://github.com/vegaprotocol/vega/issues/6234) - Fix response in query for oracle data spec by id
+- [6406](https://github.com/vegaprotocol/vega/issues/6406) - Fix invalid tracking of cumulative volume and price
+- [6387](https://github.com/vegaprotocol/vega/issues/6387) - Fix max open interest calculation
+- [6416](https://github.com/vegaprotocol/vega/issues/6416) - Prevent submission of `erc20` address already used by another asset
+- [6375](https://github.com/vegaprotocol/vega/issues/6375) - If there is one unit left over at the end of final market settlement - transfer it to the network treasury. if there is more than one, log all transfers and panic.
+- [6456](https://github.com/vegaprotocol/vega/issues/6456) - Assure liquidity fee gets update when target stake drops (even in the absence of trades)
+- [6459](https://github.com/vegaprotocol/vega/issues/6459) - Send lifecycle notifications after parameters validation
+- [6420](https://github.com/vegaprotocol/vega/issues/6420) - Support cancellation of a request during a wallet interaction
+- [6286](https://github.com/vegaprotocol/vega/issues/6286) - Fix proposal querying when cursor points to updated rows, unify queries
 
 ## 0.58.0
 
@@ -80,13 +88,6 @@
 - [6236](https://github.com/vegaprotocol/vega/issues/6236) - Make `erc20ListAssetBundle` `nullable` in `GraphQL`
 - [6395](https://github.com/vegaprotocol/vega/issues/6395) - Wallet selection doesn't lower case the wallet name during input verification
 - [6408](https://github.com/vegaprotocol/vega/issues/6408) - Initialise observer in liquidity provision `sql` store
-- [6406](https://github.com/vegaprotocol/vega/issues/6406) - Fix invalid tracking of cumulative volume and price
-- [6387](https://github.com/vegaprotocol/vega/issues/6387) - Fix max open interest calculation
-- [6416](https://github.com/vegaprotocol/vega/issues/6416) - Prevent submission of `erc20` address already used by another asset
-- [6375](https://github.com/vegaprotocol/vega/issues/6375) - If there is one unit left over at the end of final market settlement - transfer it to the network treasury. if there is more than one, log all transfers and panic.
-- [6456](https://github.com/vegaprotocol/vega/issues/6456) - Assure liquidity fee gets update when target stake drops (even in the absence of trades)
-- [6459](https://github.com/vegaprotocol/vega/issues/6459) - Send lifecycle notifications after parameters validation
-- [6420](https://github.com/vegaprotocol/vega/issues/6420) - Support cancellation of a request during a wallet interaction
 
 ## 0.57.0
 

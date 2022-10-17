@@ -35,6 +35,7 @@ type Proposals struct {
 var proposalsOrdering = TableOrdering{
 	ColumnOrdering{Name: "vega_time", Sorting: ASC},
 	ColumnOrdering{Name: "id", Sorting: ASC},
+	ColumnOrdering{Name: "state", Sorting: ASC},
 }
 
 func NewProposals(connectionSource *ConnectionSource) *Proposals {
@@ -256,6 +257,7 @@ func (ps *Proposals) Get(ctx context.Context,
 		if err != nil {
 			return nil, pageInfo, err
 		}
+		pc.State = entities.ProposalStateUnspecified
 	}
 
 	pageForward := pagination.HasForward() || (!pagination.HasForward() && !pagination.HasBackward())
