@@ -60,6 +60,11 @@ func addTestProposal(
 	return p
 }
 
+func updateTestProposal(t *testing.T, ps *sqlstore.Proposals, p entities.Proposal) {
+	t.Helper()
+	ps.Add(context.Background(), p)
+}
+
 func proposalLessThan(x, y entities.Proposal) bool {
 	return x.ID.String() < y.ID.String()
 }
@@ -168,6 +173,7 @@ func TestProposalCursorPagination(t *testing.T) {
 	t.Run("should return only the open proposals if open state is provided in the filter", testProposalCursorPaginationOpenOnly)
 	t.Run("should return the specified proposal state if one is provided", testProposalCursorPaginationGivenState)
 
+	t.Run("Get second page results without any entity having changed state between calls", testProposalCursorPaginationNoChangingState)
 	t.Run("should return the next page even if the cursor points to a proposal that has changed state", testProposalCursorPaginationChangingState)
 }
 
@@ -886,11 +892,11 @@ func testProposalCursorPaginationGivenState(t *testing.T) {
 	})
 }
 
-func testProposalCursorPaginationChangingState(t *testing.T) {
+func testProposalCursorPaginationNoChangingState(t *testing.T) {
 	defer DeleteEverything()
 	ps := sqlstore.NewProposals(connectionSource)
 	proposals, _ := createPaginationTestProposals(t, ps)
-	last := int32(10)
+	last := int32(5)
 	pagination, err := entities.NewCursorPagination(nil, nil, &last, nil, false)
 	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -898,24 +904,103 @@ func testProposalCursorPaginationChangingState(t *testing.T) {
 
 	got, pageInfo, err := ps.Get(ctx, nil, nil, nil, pagination)
 	require.NoError(t, err)
-	// Proposals should be listed in order of their status, then time, then id
+	// get the first 5 proposals - I haven't a clue why this order kept changing
 	want := []entities.Proposal{
-		proposals[0],
-		proposals[1],
-		proposals[2],
-		proposals[4],
-		proposals[5],
-		proposals[6],
+		proposals[16],
 		proposals[7],
-		proposals[8],
+		proposals[17],
 		proposals[9],
+		proposals[19],
 	}
+	assert.Equal(t, want, got)
+	// we should get a page + flag to get next page
+	require.Equal(t, entities.PageInfo{
+		HasNextPage:     false,
+		HasPreviousPage: true,
+		StartCursor:     proposals[16].Cursor().Encode(),
+		EndCursor:       proposals[19].Cursor().Encode(),
+	}, pageInfo)
+	// now get the next page, no changes
+	pagination, err = entities.NewCursorPagination(nil, &pageInfo.EndCursor, &last, nil, false)
+	require.NoError(t, err)
+	got, pageInfo, err = ps.Get(ctx, nil, nil, nil, pagination)
+	require.NoError(t, err)
+	require.Equal(t, want, got)
+	require.Equal(t, entities.PageInfo{
+		HasNextPage:     false,
+		HasPreviousPage: true,
+		StartCursor:     proposals[16].Cursor().Encode(),
+		EndCursor:       proposals[19].Cursor().Encode(),
+	}, pageInfo)
+}
+
+func testProposalCursorPaginationChangingState(t *testing.T) {
+	defer DeleteEverything()
+	ps := sqlstore.NewProposals(connectionSource)
+	reqState := entities.ProposalStateOpen
+	proposals, _ := createPaginationTestProposals(t, ps)
+	openProps := make([]entities.Proposal, 0, 8) // should be 8 proposals in this state
+	last := int32(2)                             // only 2 per page
+	pagination, err := entities.NewCursorPagination(nil, nil, &last, nil, false)
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	for _, p := range proposals {
+		if p.State == reqState {
+			openProps = append(openProps, p)
+		}
+	}
+	require.Len(t, openProps, 8)
+	got, pageInfo, err := ps.Get(ctx, &reqState, nil, nil, pagination)
+	require.NoError(t, err)
+	// get the first 5 proposals
+	want := []entities.Proposal{
+		openProps[3],
+		openProps[7],
+	}
+	assert.Equal(t, want, got)
+	// we should get a page + flag to get next page
+	assert.Equal(t, entities.PageInfo{
+		HasNextPage:     false,
+		HasPreviousPage: true,
+		StartCursor:     openProps[3].Cursor().Encode(),
+		EndCursor:       openProps[7].Cursor().Encode(),
+	}, pageInfo)
+	// now get the next page, valid cursors, but one of the expected entities has changed state
+	// entities.ProposalStatePassed,
+	p := openProps[3]
+	p.State = entities.ProposalStateFailed
+	updateTestProposal(t, ps, p)
+	// this cursor should be invalid at this point
+	pagination, err = entities.NewCursorPagination(nil, &pageInfo.StartCursor, &last, nil, false)
+	require.NoError(t, err)
+	got, pageInfo, err = ps.Get(ctx, &reqState, nil, nil, pagination)
+	require.NoError(t, err)
+	want = openProps[6:8]
 	assert.Equal(t, want, got)
 	assert.Equal(t, entities.PageInfo{
 		HasNextPage:     false,
-		HasPreviousPage: false,
-		StartCursor:     proposals[0].Cursor().Encode(),
-		EndCursor:       proposals[13].Cursor().Encode(),
+		HasPreviousPage: true,
+		StartCursor:     openProps[6].Cursor().Encode(),
+		EndCursor:       openProps[7].Cursor().Encode(),
+	}, pageInfo)
+	// now repeat the same paginated request, but change the value of the start cursor entity
+	p = openProps[6]
+	p.State = entities.ProposalStateRejected
+	updateTestProposal(t, ps, p)
+	pagination, err = entities.NewCursorPagination(nil, &pageInfo.StartCursor, &last, nil, false)
+	require.NoError(t, err)
+	got, pageInfo, err = ps.Get(ctx, &reqState, nil, nil, pagination)
+	require.NoError(t, err)
+	want[0] = openProps[2]
+	// want = openProps[6:8]
+	assert.Equal(t, want, got)
+	assert.Equal(t, entities.PageInfo{
+		HasNextPage:     false,
+		HasPreviousPage: true,
+		StartCursor:     openProps[2].Cursor().Encode(),
+		EndCursor:       openProps[7].Cursor().Encode(),
 	}, pageInfo)
 }
 

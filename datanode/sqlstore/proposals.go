@@ -257,7 +257,7 @@ func (ps *Proposals) Get(ctx context.Context,
 		if err != nil {
 			return nil, pageInfo, err
 		}
-		pc.State = entities.ProposalStateUnspecified
+		// pc.State = entities.ProposalStateUnspecified
 	}
 
 	pageForward := pagination.HasForward() || (!pagination.HasForward() && !pagination.HasBackward())
