@@ -316,7 +316,6 @@ func testProposalCursorPaginationWithLastAndBefore(t *testing.T) {
 	pagination, err := entities.NewCursorPagination(nil, nil, &last, &before, false)
 	require.True(t, pagination.HasBackward(), "no backwards")
 	require.True(t, pagination.Backward.HasCursor(), "No cursor")
-	t.Logf("Backwards cursor: %#v\n", pagination.Backward.Cursor)
 	// pagination, err := entities.NewCursorPagination(nil, &before, &last, nil, false)
 	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -406,18 +405,6 @@ func testProposalCursorPaginationWithFirstNewestFirst(t *testing.T) {
 		proposals[12],
 	}
 	assert.Equal(t, want, got)
-	for i, g := range got {
-		for j, p := range proposals {
-			if g.ID == p.ID {
-				t.Logf("Proposal gotten at idx %d matches proposals[%d]\n", i, j)
-			}
-			if pc := p.Cursor().Encode(); pc == pageInfo.StartCursor {
-				t.Logf("Start cursor proposals[%d]\n", j)
-			} else if pc == pageInfo.EndCursor {
-				t.Logf("End cursor proposals[%d]\n", j)
-			}
-		}
-	}
 	assert.Equal(t, entities.PageInfo{
 		HasNextPage:     true,
 		HasPreviousPage: false,
@@ -675,18 +662,6 @@ func testProposalCursorPaginationWithLastAndBeforeByParty(t *testing.T) {
 		proposals[6], // this is because of the second cursor clauses, where id >= the id from cursor
 	}
 	assert.Equal(t, want, got)
-	for i, g := range got {
-		for j, p := range proposals {
-			if g.ID == p.ID {
-				t.Logf("Proposal gotten at idx %d matches proposals[%d]\n", i, j)
-			}
-			if pc := p.Cursor().Encode(); pc == pageInfo.StartCursor {
-				t.Logf("Start cursor proposals[%d]\n", j)
-			} else if pc == pageInfo.EndCursor {
-				t.Logf("End cursor proposals[%d]\n", j)
-			}
-		}
-	}
 	assert.Equal(t, entities.PageInfo{
 		HasNextPage:     true,
 		HasPreviousPage: true,
@@ -722,18 +697,6 @@ func testProposalCursorPaginationNoPaginationByPartyNewestFirst(t *testing.T) {
 		proposals[3],
 	}
 	assert.Equal(t, want, got)
-	for i, g := range got {
-		for j, p := range proposals {
-			if g.ID == p.ID {
-				t.Logf("Proposal gotten at idx %d matches proposals[%d]\n", i, j)
-			}
-			if pc := p.Cursor().Encode(); pc == pageInfo.StartCursor {
-				t.Logf("Start cursor proposals[%d]\n", j)
-			} else if pc == pageInfo.EndCursor {
-				t.Logf("End cursor proposals[%d]\n", j)
-			}
-		}
-	}
 	assert.Equal(t, entities.PageInfo{
 		HasNextPage:     false,
 		HasPreviousPage: false,
@@ -899,18 +862,6 @@ func testProposalCursorPaginationOpenOnly(t *testing.T) {
 		proposals[18],
 	}
 	assert.Equal(t, want, got)
-	for i, g := range got {
-		for j, p := range proposals {
-			if g.ID == p.ID {
-				t.Logf("Proposal gotten at idx %d matches proposals[%d]\n", i, j)
-			}
-			if pc := p.Cursor().Encode(); pc == pageInfo.StartCursor {
-				t.Logf("Start cursor proposals[%d]\n", j)
-			} else if pc == pageInfo.EndCursor {
-				t.Logf("End cursor proposals[%d]\n", j)
-			}
-		}
-	}
 	assert.Equal(t, entities.PageInfo{
 		HasNextPage:     false,
 		HasPreviousPage: false,

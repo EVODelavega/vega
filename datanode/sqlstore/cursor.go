@@ -265,7 +265,6 @@ func PaginateQuery[T any, PT parserPtr[T]](
 		(pagination.HasForward() && pagination.NewestFirst) || // Navigating forward in reverse time order
 		(!pagination.HasBackward() && !pagination.HasForward() && pagination.NewestFirst) { // No pagination provided, but in reverse time order
 		ordering = ordering.Reversed()
-		fmt.Println("select > REVERSED")
 	}
 
 	// If the cursor wasn't empty, exclude rows preceding the cursor's row
@@ -325,9 +324,6 @@ func PaginateQuery[T any, PT parserPtr[T]](
 		query = fmt.Sprintf("%s LIMIT %d", query, limit)
 	}
 
-	if len(query) > 0 {
-		fmt.Println(query)
-	}
 	return query, args, nil
 }
 

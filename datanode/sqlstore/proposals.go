@@ -22,7 +22,6 @@ import (
 	"code.vegaprotocol.io/vega/libs/ptr"
 	v2 "code.vegaprotocol.io/vega/protos/data-node/api/v2"
 	"github.com/georgysavva/scany/pgxscan"
-	"github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
 )
 
@@ -156,7 +155,6 @@ func getOpenStateProposalsQuery(inState *entities.ProposalState, conditions []st
 		order[0].Sorting = ASC
 	}
 	if err != nil {
-		fmt.Println(query)
 		return "", args, err
 	}
 
@@ -254,37 +252,19 @@ func (ps *Proposals) Get(ctx context.Context,
 	if err != nil {
 		return nil, pageInfo, err
 	}
-	if query == "" {
-		panic("No state proposal query")
-	}
-
-	batch := &pgx.Batch{}
-
-	batch.Queue(query, args...)
 
 	defer metrics.StartSQLQuery("Proposals", "Get")()
-	results := ps.Connection.SendBatch(ctx, batch)
-	defer results.Close()
 
 	proposals := []entities.Proposal{}
-
-	for {
-		rows, err := results.Query()
-		if err != nil {
-			break
-		}
-
-		var props []entities.Proposal
-
-		if err := pgxscan.ScanAll(&props, rows); err != nil {
-			return nil, pageInfo, fmt.Errorf("querying proposals: %w", err)
-		}
-
-		if pageForward {
-			proposals = append(proposals, props...)
-		} else {
-			proposals = append(props, proposals...)
-		}
+	// get the results:
+	rows, err := ps.Connection.Query(ctx, query, args...)
+	// ensure rows are closed
+	defer rows.Close()
+	if err != nil {
+		return nil, pageInfo, ErrProposalNotFound
+	}
+	if err := pgxscan.ScanAll(&proposals, rows); err != nil {
+		return nil, pageInfo, fmt.Errorf("scanning proposals: %w", err)
 	}
 
 	if limit := calculateLimit(pagination); limit > 0 && limit < len(proposals) {
