@@ -226,6 +226,10 @@ type ProposalCursor struct {
 	ID       ProposalID    `json:"id"`
 }
 
+func (pc ProposalCursor) Equals(other ProposalCursor) bool {
+	return pc == other
+}
+
 func (pc ProposalCursor) String() string {
 	bs, err := json.Marshal(pc)
 	if err != nil {

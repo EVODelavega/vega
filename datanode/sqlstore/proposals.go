@@ -17,13 +17,13 @@ import (
 	"fmt"
 	"strings"
 
+	"code.vegaprotocol.io/vega/datanode/entities"
+	"code.vegaprotocol.io/vega/datanode/metrics"
+	"code.vegaprotocol.io/vega/libs/ptr"
+	v2 "code.vegaprotocol.io/vega/protos/data-node/api/v2"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
-
-	"code.vegaprotocol.io/vega/datanode/entities"
-	"code.vegaprotocol.io/vega/datanode/metrics"
-	v2 "code.vegaprotocol.io/vega/protos/data-node/api/v2"
 )
 
 var ErrProposalNotFound = errors.New("proposal not found")
@@ -33,9 +33,32 @@ type Proposals struct {
 }
 
 var proposalsOrdering = TableOrdering{
-	ColumnOrdering{Name: "vega_time", Sorting: ASC},
-	ColumnOrdering{Name: "id", Sorting: ASC},
-	ColumnOrdering{Name: "state", Sorting: ASC},
+	ColumnOrdering{ // this HAS to come first
+		Name: "state", // this doesn't need to be set.
+		Case: &OrderCase{
+			When: []WhenCase{
+				{
+					CursorQueryParameter: CursorQueryParameter{
+						ColumnName: "state",
+						Cmp:        EQ,
+						Value:      entities.ProposalStateOpen.EnumStr(),
+					},
+					Then: "1",
+				},
+			},
+			Else: ptr.From("2"), // ELSE 2
+			// NoReverse: true,          // never reverse this, keep in ascending order.
+		},
+		Sorting: ASC,
+	},
+	ColumnOrdering{
+		Name:    "vega_time",
+		Sorting: ASC,
+	},
+	ColumnOrdering{
+		Name:    "id",
+		Sorting: ASC,
+	},
 }
 
 func NewProposals(connectionSource *ConnectionSource) *Proposals {
@@ -106,86 +129,48 @@ func (ps *Proposals) GetByReference(ctx context.Context, ref string) (entities.P
 }
 
 func getOpenStateProposalsQuery(inState *entities.ProposalState, conditions []string, pagination entities.CursorPagination,
-	pc *entities.ProposalCursor, pageForward bool, args ...interface{},
+	pageForward bool, args ...interface{},
 ) (string, []interface{}, error) {
-	// if we're querying for a specific state and it's not the Open state,
-	// or if we are paging forward and the current state is not the open state
-	// then we do not need to query for any open state proposals
-	if (inState != nil && *inState != entities.ProposalStateOpen) ||
-		(pageForward && pc.State != entities.ProposalStateUnspecified && pc.State != entities.ProposalStateOpen) {
-		// we aren't interested in open proposals so the query should be empty
-		return "", args, nil
-	}
-
-	if pc.State != entities.ProposalStateOpen {
-		if pagination.HasForward() {
-			pagination.Forward.Cursor = nil
-		} else if pagination.HasBackward() {
-			pagination.Backward.Cursor = nil
-		}
-	}
-
-	conditions = append([]string{
-		fmt.Sprintf("state=%s", nextBindVar(&args, entities.ProposalStateOpen)),
-	}, conditions...)
-
 	query := `select * from proposals_current`
 
 	if len(conditions) > 0 {
 		query = fmt.Sprintf("%s WHERE %s", query, strings.Join(conditions, " AND "))
 	}
+	// we are getting newest first by time, but that does mess up the state ordering, we have to ensure that we're still prioritising open state proposals
+	order := proposalsOrdering
+	flipped := false
+	// reverse time order, either hasForward is true, or both HasForward and HasBackward are false
+	if inState != nil {
+		order = proposalsOrdering[1:] // ignore the state order by bit, it doesn't apply here
+	} else if pagination.NewestFirst {
+		// if pagination.NewestFirst && (pagination.HasForward() || !pagination.HasBackward()) {
+		// set to descending, we know this will be inverted
+		order[0].Sorting = DESC
+		flipped = true
+	}
 
 	var err error
-	query, args, err = PaginateQuery[entities.ProposalCursor](query, args, proposalsOrdering, pagination)
+	query, args, err = PaginateQuery[entities.ProposalCursor](query, args, order, pagination, addOpenCursor)
+	if flipped {
+		// we need to restore the sorting after using it in this way
+		order[0].Sorting = ASC
+	}
 	if err != nil {
+		fmt.Println(query)
 		return "", args, err
 	}
 
 	return query, args, nil
 }
 
-func getOtherStateProposalsQuery(inState *entities.ProposalState, conditions []string, pagination entities.CursorPagination,
-	pc *entities.ProposalCursor, pageForward bool, args ...interface{},
-) (string, []interface{}, error) {
-	// if we're filtering for state and the state is open,
-	// or we're paging forward, and the cursor has reached the open proposals
-	// then we don't need to return any non-open proposal results
-	if (inState != nil && *inState == entities.ProposalStateOpen) || (!pageForward && pc.State == entities.ProposalStateOpen) {
-		// the open state query should already be providing the correct query for this
-		return "", args, nil
+// set cursor state to open
+func addOpenCursor(c entities.ProposalCursor) (entities.ProposalCursor, []string) {
+	if c.State == entities.ProposalStateOpen || c.State == entities.ProposalStateUnspecified {
+		return c, nil
 	}
-
-	if pagination.HasForward() {
-		if pc.State == entities.ProposalStateOpen || pc.State == entities.ProposalStateUnspecified {
-			pagination.Forward.Cursor = nil
-		}
-	} else if pagination.HasBackward() {
-		if pc.State == entities.ProposalStateOpen || pc.State == entities.ProposalStateUnspecified {
-			pagination.Backward.Cursor = nil
-		}
-	}
-
-	if inState == nil {
-		conditions = append([]string{
-			fmt.Sprintf("state!=%s", nextBindVar(&args, entities.ProposalStateOpen)),
-		}, conditions...)
-	} else {
-		conditions = append([]string{
-			fmt.Sprintf("state=%s", nextBindVar(&args, *inState)),
-		}, conditions...)
-	}
-	query := `select * from proposals_current`
-
-	if len(conditions) > 0 {
-		query = fmt.Sprintf("%s WHERE %s", query, strings.Join(conditions, " AND "))
-	}
-
-	var err error
-	query, args, err = PaginateQuery[entities.ProposalCursor](query, args, proposalsOrdering, pagination)
-	if err != nil {
-		return "", args, err
-	}
-	return query, args, nil
+	c.State = entities.ProposalStateOpen
+	// mark state column has been overridden
+	return c, []string{"state"}
 }
 
 func clonePagination(p entities.CursorPagination) (entities.CursorPagination, error) {
@@ -241,28 +226,17 @@ func (ps *Proposals) Get(ctx context.Context,
 	// This combined results of both queries is then wrapped with another select which should return the appropriate number of rows that
 	// are required for the pagination to determine whether or not there are any next/previous rows for the pageInfo.
 	var (
-		pageInfo        entities.PageInfo
-		stateOpenQuery  string
-		stateOtherQuery string
-		stateOpenArgs   []interface{}
-		stateOtherArgs  []interface{}
+		pageInfo entities.PageInfo
+		query    string
 	)
-	args := make([]interface{}, 0)
-	cursor := extractCursorFromPagination(pagination)
-
-	pc := &entities.ProposalCursor{}
-
-	if cursor != "" {
-		err := pc.Parse(cursor)
-		if err != nil {
-			return nil, pageInfo, err
-		}
-		// pc.State = entities.ProposalStateUnspecified
-	}
+	args := []interface{}{}
 
 	pageForward := pagination.HasForward() || (!pagination.HasForward() && !pagination.HasBackward())
 	var conditions []string
 
+	if inState != nil {
+		conditions = append(conditions, fmt.Sprintf("state = %s", nextBindVar(&args, *inState)))
+	}
 	if partyIDStr != nil {
 		partyID := entities.PartyID(*partyIDStr)
 		conditions = append(conditions, fmt.Sprintf("party_id=%s", nextBindVar(&args, partyID)))
@@ -273,42 +247,26 @@ func (ps *Proposals) Get(ctx context.Context,
 	}
 
 	var err error
-	var openPagination, otherPagination entities.CursorPagination
 	// we need to clone the pagination objects because we need to alter the pagination data for the different states
 	// to support the required ordering of the data
-	openPagination, err = clonePagination(pagination)
-	if err != nil {
-		return nil, pageInfo, fmt.Errorf("invalid pagination: %w", err)
-	}
-	otherPagination, err = clonePagination(pagination)
-	if err != nil {
-		return nil, pageInfo, fmt.Errorf("invalid pagination: %w", err)
-	}
 
-	stateOpenQuery, stateOpenArgs, err = getOpenStateProposalsQuery(inState, conditions, openPagination, pc, pageForward, args...)
+	query, args, err = getOpenStateProposalsQuery(inState, conditions, pagination, pageForward, args...)
 	if err != nil {
 		return nil, pageInfo, err
 	}
-	stateOtherQuery, stateOtherArgs, err = getOtherStateProposalsQuery(inState, conditions, otherPagination, pc, pageForward, args...)
-	if err != nil {
-		return nil, pageInfo, err
+	if query == "" {
+		panic("No state proposal query")
 	}
 
 	batch := &pgx.Batch{}
 
-	if stateOpenQuery != "" {
-		batch.Queue(stateOpenQuery, stateOpenArgs...)
-	}
-
-	if stateOtherQuery != "" {
-		batch.Queue(stateOtherQuery, stateOtherArgs...)
-	}
+	batch.Queue(query, args...)
 
 	defer metrics.StartSQLQuery("Proposals", "Get")()
 	results := ps.Connection.SendBatch(ctx, batch)
 	defer results.Close()
 
-	proposals := make([]entities.Proposal, 0)
+	proposals := []entities.Proposal{}
 
 	for {
 		rows, err := results.Query()

@@ -444,6 +444,20 @@ const (
 	ProposalStateWaitingForNodeVote = ProposalState(vega.Proposal_STATE_WAITING_FOR_NODE_VOTE)
 )
 
+// String does the same as EncodeText, but ignores errors
+func (s ProposalState) String() string {
+	str, ok := vega.Proposal_State_name[int32(s)]
+	if !ok {
+		return ""
+	}
+	return str
+}
+
+// EnumStr does the same as String(), but wraps the value in single quotes for use in queries
+func (s ProposalState) EnumStr() string {
+	return fmt.Sprintf("'%s'", s.String())
+}
+
 func (s ProposalState) EncodeText(_ *pgtype.ConnInfo, buf []byte) ([]byte, error) {
 	str, ok := vega.Proposal_State_name[int32(s)]
 	if !ok {

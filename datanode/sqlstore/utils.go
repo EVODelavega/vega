@@ -22,6 +22,8 @@ import (
 	"github.com/georgysavva/scany/dbscan"
 )
 
+var outNr = 1
+
 // A handy little helper function for building queries. Appends 'value'
 // to the 'args' slice and returns a string '$N' referring to the index
 // of the value in args. For example:
