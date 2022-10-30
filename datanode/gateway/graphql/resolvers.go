@@ -3123,9 +3123,19 @@ func queueSend[T any](ctx context.Context, data T, ch chan<- T) {
 }
 
 func (r *mySubscriptionResolver) LiquidityProvisions(ctx context.Context, partyID *string, marketID *string) (<-chan []*types.LiquidityProvision, error) {
+	// let's just make sure we pass in copies to the request, in case this ends up messing things up somehow
+	var mID, pID *string
+	if marketID != nil {
+		s := *marketID
+		mID = &s
+	}
+	if partyID != nil {
+		s := *partyID
+		pID = &s
+	}
 	req := &v2.ObserveLiquidityProvisionsRequest{
-		MarketId: marketID,
-		PartyId:  partyID,
+		MarketId: mID,
+		PartyId:  pID,
 	}
 	stream, err := r.tradingDataClientV2.ObserveLiquidityProvisions(ctx, req)
 	if err != nil {

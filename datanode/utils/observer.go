@@ -25,6 +25,7 @@ import (
 
 type subscriber[T any] struct {
 	ch chan []T
+	cb func(T) bool
 }
 
 type Observer[T any] struct {
@@ -54,7 +55,10 @@ func (o *Observer[T]) Subscribe(ctx context.Context, filter func(T) bool) (chan 
 
 	ch := make(chan []T, o.inChSize)
 	o.lastSubID++
-	o.subscribers[o.lastSubID] = subscriber[T]{ch}
+	o.subscribers[o.lastSubID] = subscriber[T]{
+		ch: ch,
+		cb: filter,
+	}
 
 	ip, _ := contextutil.RemoteIPAddrFromContext(ctx)
 	o.logDebug(ip, o.lastSubID, "new subscription")
@@ -85,6 +89,36 @@ func (o *Observer[T]) GetSubscribersCount() int32 {
 	return atomic.LoadInt32(&o.subCount)
 }
 
+func (o *Observer[T]) pushToSub(wg *sync.WaitGroup, id uint64, vals []T, rmCh chan<- uint64) {
+	defer wg.Done()
+	// this should exist, but better safe than sorry
+	sub, ok := o.subscribers[id]
+	if !ok {
+		o.logWarning("", id, "subscriber not found")
+		return
+	}
+	if sub.cb != nil {
+		filtered := make([]T, 0, len(vals))
+		for _, v := range vals {
+			if sub.cb(v) {
+				filtered = append(filtered, v)
+			}
+		}
+		vals = filtered
+	}
+	if len(vals) == 0 {
+		o.logDebug("", id, "no filtered values to push")
+		return
+	}
+	select {
+	case sub.ch <- vals:
+		o.logDebug("", id, "channel updated successfully")
+	default:
+		o.logWarning("", id, "channel could not be updated")
+		rmCh <- id
+	}
+}
+
 func (o *Observer[T]) Notify(values []T) {
 	o.mut.Lock()
 	defer o.mut.Unlock()
@@ -96,17 +130,29 @@ func (o *Observer[T]) Notify(values []T) {
 	if len(values) == 0 {
 		return
 	}
+	rmCh := make(chan uint64, len(o.subscribers))
+	done := make(chan struct{})
+	wg := sync.WaitGroup{}
+	wg.Add(len(o.subscribers))
 
-	for id, sub := range o.subscribers {
-		select {
-		case sub.ch <- values:
-			o.logDebug("", id, "channel updated successfully")
-		default:
-			o.logWarning("", id, "channel could not be updated, closing")
-			delete(o.subscribers, id) // safe to delete from map while iterating
+	// delete subscribers as we go
+	go func() {
+		for id := range rmCh {
+			sub, ok := o.subscribers[id]
+			if !ok {
+				continue
+			}
+			delete(o.subscribers, id)
 			close(sub.ch)
 		}
+		close(done)
+	}()
+	for id := range o.subscribers {
+		go o.pushToSub(&wg, id, values, rmCh)
 	}
+	wg.Wait()
+	close(rmCh)
+	<-done // make sure delete channel is closed
 }
 
 func (o *Observer[T]) Observe(ctx context.Context, retries int, filter func(T) bool) (<-chan []T, uint64) {
@@ -137,20 +183,11 @@ func (o *Observer[T]) Observe(ctx context.Context, retries int, filter func(T) b
 					close(out)
 					return
 				}
-				filtered := make([]T, 0, len(values))
-				for _, value := range values {
-					if filter(value) {
-						filtered = append(filtered, value)
-					}
-				}
-				if len(filtered) == 0 {
-					continue
-				}
 				retryCount := retries
 				success := false
 				for !success && retryCount >= 0 {
 					select {
-					case out <- filtered:
+					case out <- values:
 						retryCount = retries
 						success = true
 						o.logDebug(ip, ref, "sent successfully")

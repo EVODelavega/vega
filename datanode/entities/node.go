@@ -322,6 +322,7 @@ func (node *Node) ToProto() *vega.Node {
 	for i, delegation := range node.Delegations {
 		protoDelegations[i] = delegation.ToProto()
 	}
+	edCpy := *node.EpochData.EpochData
 
 	res := &vega.Node{
 		Id:                node.ID.String(),
@@ -335,7 +336,7 @@ func (node *Node) ToProto() *vega.Node {
 		StakedTotal:       node.StakedTotal.String(),
 		MaxIntendedStake:  node.MaxIntendedStake.String(),
 		PendingStake:      node.PendingStake.String(),
-		EpochData:         node.EpochData.EpochData,
+		EpochData:         &edCpy,
 		Status:            vega.NodeStatus(node.Status),
 		Delegations:       protoDelegations,
 		Name:              node.Name,

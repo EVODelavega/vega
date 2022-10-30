@@ -110,10 +110,22 @@ func (lp *LiquidityProvision) ToProto() *vega.LiquidityProvision {
 	buys := make([]*vega.LiquidityOrderReference, 0, len(lp.Buys))
 
 	for _, sell := range lp.Sells {
-		sells = append(sells, sell.LiquidityOrderReference)
+		// make a deep copy, we shouldn't be worried about nil values, but let's be safe
+		var sv *vega.LiquidityOrderReference
+		if sell.LiquidityOrderReference != nil {
+			cpy := *sell.LiquidityOrderReference
+			sv = &cpy
+		}
+		sells = append(sells, sv)
 	}
 	for _, buy := range lp.Buys {
-		buys = append(buys, buy.LiquidityOrderReference)
+		// same here, deep copy, protect against nil values
+		var bv *vega.LiquidityOrderReference
+		if buy.LiquidityOrderReference != nil {
+			cpy := *buy.LiquidityOrderReference
+			bv = &cpy
+		}
+		buys = append(buys, bv)
 	}
 
 	return &vega.LiquidityProvision{

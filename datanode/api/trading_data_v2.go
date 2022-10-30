@@ -1802,16 +1802,17 @@ func (t *tradingDataServiceV2) ObserveLiquidityProvisions(request *v2.ObserveLiq
 	lpCh, ref := t.liquidityProvisionService.ObserveLiquidityProvisions(ctx, t.config.StreamRetries, request.PartyId, request.MarketId)
 
 	if t.log.GetLevel() == logging.DebugLevel {
-		t.log.Debug("Orders subscriber - new rpc stream", logging.Uint64("ref", ref))
+		t.log.Debug("Liquidity Provisions subscriber - new rpc stream", logging.Uint64("ref", ref))
 	}
 
-	return observeBatch(ctx, t.log, "Order", lpCh, ref, func(lps []entities.LiquidityProvision) error {
+	return observeBatch(ctx, t.log, "Liquidity Provisions", lpCh, ref, func(lps []entities.LiquidityProvision) error {
 		protos := make([]*vega.LiquidityProvision, 0, len(lps))
 		for _, v := range lps {
 			protos = append(protos, v.ToProto())
 		}
-		response := &v2.ObserveLiquidityProvisionsResponse{LiquidityProvisions: protos}
-		return srv.Send(response)
+		return srv.Send(&v2.ObserveLiquidityProvisionsResponse{
+			LiquidityProvisions: protos,
+		})
 	})
 }
 

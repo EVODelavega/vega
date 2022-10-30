@@ -72,6 +72,7 @@ func observeBatch[T any](ctx context.Context, log *logging.Logger, eventType str
 	defer metrics.StartActiveSubscriptionCountGRPC(eventType)()
 
 	publishedEventStatTicker := time.NewTicker(time.Second)
+	defer publishedEventStatTicker.Stop() // tickers leak memory
 	var publishedEvents int64
 	var err error
 	for {
@@ -97,13 +98,6 @@ func observeBatch[T any](ctx context.Context, log *logging.Logger, eventType str
 				log.Debugf("rpc stream ctx error, subscriber to %s, reference %v, error: %v", eventType, ref, err)
 			}
 			return apiError(codes.Internal, ErrStreamInternal, err)
-		}
-
-		if eventsInChan == nil {
-			if log.GetLevel() == logging.DebugLevel {
-				log.Debugf("rpc stream closed, subscriber to %s, reference %v, error: %v", eventType, ref, err)
-			}
-			return apiError(codes.Internal, ErrStreamClosed)
 		}
 	}
 }

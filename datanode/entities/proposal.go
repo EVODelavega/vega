@@ -99,15 +99,16 @@ func (p *Proposal) ToProto() *vega.Proposal {
 	if len(p.ErrorDetails) > 0 {
 		errDetails = ptr.From(p.ErrorDetails)
 	}
+	pr := *p.Rationale.ProposalRationale
 
 	pp := vega.Proposal{
 		Id:                                     p.ID.String(),
 		Reference:                              p.Reference,
 		PartyId:                                p.PartyID.String(),
 		State:                                  vega.Proposal_State(p.State),
-		Rationale:                              p.Rationale.ProposalRationale,
+		Rationale:                              &pr,
 		Timestamp:                              p.ProposalTime.UnixNano(),
-		Terms:                                  p.Terms.ProposalTerms,
+		Terms:                                  p.Terms.ProposalTerms.DeepClone(),
 		Reason:                                 reason,
 		ErrorDetails:                           errDetails,
 		RequiredMajority:                       p.RequiredMajority.String(),

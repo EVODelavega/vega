@@ -111,7 +111,7 @@ func NewMarketFromProto(market *vega.Market, txHash TxHash, vegaTime time.Time) 
 		TxHash:                        txHash,
 		VegaTime:                      vegaTime,
 		InstrumentID:                  market.TradableInstrument.Instrument.Id,
-		TradableInstrument:            TradableInstrument{market.TradableInstrument},
+		TradableInstrument:            TradableInstrument{market.TradableInstrument.DeepClone()},
 		DecimalPlaces:                 dps,
 		Fees:                          fees,
 		OpeningAuction:                openingAuction,

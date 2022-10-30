@@ -65,7 +65,8 @@ func (lp *LiquidityProvision) Flush(ctx context.Context) error {
 func (lp *LiquidityProvision) ObserveLiquidityProvisions(ctx context.Context, retries int,
 	market *string, party *string,
 ) (<-chan []entities.LiquidityProvision, uint64) {
-	// we can remove the indirection on each call quite easily (and we should)
+	// avoid indirection. these arguments can be pointers working their way down from a GQL query
+	// no telling where, and to what these can be changed
 	mktOK, prtOK := true, true
 	var mktLC, mktUC, pidLC, pidUC string
 	if market != nil {
