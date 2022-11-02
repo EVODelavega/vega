@@ -13,6 +13,7 @@
 
 ### 🐛 Fixes
 - [6661](https://github.com/vegaprotocol/vega/issues/6661) - Scale price to asset decimal in estimate orders
+- [6579](https://github.com/vegaprotocol/vega/issues/6579) - Fix GraphQL liquidity provisions filtering.
 
 
 ## 0.61.0

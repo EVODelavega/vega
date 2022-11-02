@@ -3080,6 +3080,48 @@ func (r *mySubscriptionResolver) busEventsWithBatch(batchSize int64, stream v2.T
 	}
 }
 
+// sendQueue retains the original behaviour of the send channel not being buffered, but appends pending data
+// to a slice to get around the problem, and instead sends all of the data in a large slice whenever possible
+func sendQueue[T any](ctx context.Context, sch chan<- []T) chan<- []T {
+	iCh := make(chan T, 100)     // large buffer, especially considering we're using channels
+	pending := make([]T, 0, 100) // some buffer for the slice that will act as our local buffer
+	go func() {
+		// because this function essentially trades ownership of the send channel and the internal channel
+		// this function is responsible for closing the send channel, the caller is responsible for closing
+		// the internal channel
+		defer close(sch)
+		for {
+			select {
+			case data, ok := <-iCh:
+				if !ok {
+					// internal channel is closed, that basically means we stop sending
+					return
+				}
+				if len(data) > 0 {
+					// we received more data
+					pending = append(pending, data...)
+				}
+			case sch <- pending:
+				// clear pending, we've sent it all
+				pending = pending[:0]
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return iCh
+}
+
+// queueSend will wait until the out channel is available before pushing the data onto it
+func queueSend[T any](ctx context.Context, data T, ch chan<- T) {
+	select {
+	case <-ctx.Done():
+		return
+	case ch <- data:
+		return // send done
+	}
+}
+
 func (r *mySubscriptionResolver) LiquidityProvisions(ctx context.Context, partyID *string, marketID *string) (<-chan []*types.LiquidityProvision, error) {
 	req := &v2.ObserveLiquidityProvisionsRequest{
 		MarketId: marketID,
@@ -3092,22 +3134,29 @@ func (r *mySubscriptionResolver) LiquidityProvisions(ctx context.Context, partyI
 
 	c := make(chan []*types.LiquidityProvision)
 	go func() {
+		// we can just mask the outer c channel, but this is to make clear
+		// we close the channel created by the sendQueue function, which in turn will close the actual
+		// send channel
+		ch := sendQueue[*types.LiquidityProvision](cctx, c)
 		defer func() {
 			stream.CloseSend()
-			close(c)
+			cfunc()
+			close(ch)
 		}()
+		cctx, cfunc := context.WithCancel(ctx)
+		send := queueSend[[]*types.LiquidityProvision]
 		for {
 			received, err := stream.Recv()
 			if err == io.EOF {
-				r.log.Error("orders: stream closed by server", logging.Error(err))
-				break
+				r.log.Error("liquidity provisions: stream closed by server", logging.Error(err))
+				return
 			}
 			if err != nil {
-				r.log.Error("orders: stream closed", logging.Error(err))
-				break
+				r.log.Error("liquidity provisions: stream closed", logging.Error(err))
+				return
 			}
 			if lps := received.LiquidityProvisions; lps != nil {
-				c <- lps
+				ch <- lps
 			}
 		}
 	}()

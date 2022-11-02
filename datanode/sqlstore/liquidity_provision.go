@@ -16,6 +16,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"code.vegaprotocol.io/vega/datanode/entities"
 	"code.vegaprotocol.io/vega/datanode/metrics"
@@ -64,13 +65,39 @@ func (lp *LiquidityProvision) Flush(ctx context.Context) error {
 func (lp *LiquidityProvision) ObserveLiquidityProvisions(ctx context.Context, retries int,
 	market *string, party *string,
 ) (<-chan []entities.LiquidityProvision, uint64) {
+	// we can remove the indirection on each call quite easily (and we should)
+	mktOK, prtOK := true, true
+	var mktLC, mktUC, pidLC, pidUC string
+	if market != nil {
+		mktOK = false
+		mktLC = strings.ToLower(*market)
+		mktUC = strings.ToUpper(mktLC)
+	}
+	if party != nil {
+		prtOK = false
+		pidLC = strings.ToLower(*party)
+		pidUC = strings.ToUpper(pidLC)
+	}
 	ch, ref := lp.observer.Observe(
 		ctx,
 		retries,
 		func(lp entities.LiquidityProvision) bool {
-			marketOk := market == nil || lp.MarketID.String() == *market
-			partyOk := party == nil || lp.PartyID.String() == *party
-			return marketOk && partyOk
+			if !prtOK {
+				// filter by party, check party
+				if pID := lp.PartyID.String(); pID != pidLC && pID != pidUC {
+					// party ID does not match upper/lower case party ID from query
+					return false
+				}
+			}
+			if !mktOK {
+				// we need to check market ID's
+				if lpID := lp.MarketID.String(); lpID != mktLC && lpID != mktUC {
+					// market ID != upper or lower-case query ID
+					return false
+				}
+			}
+			// all checks passed, or none were needed
+			return true
 		})
 	return ch, ref
 }
