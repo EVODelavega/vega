@@ -16,7 +16,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"code.vegaprotocol.io/vega/datanode/entities"
 	"code.vegaprotocol.io/vega/datanode/metrics"
@@ -68,34 +67,27 @@ func (lp *LiquidityProvision) ObserveLiquidityProvisions(ctx context.Context, re
 	// avoid indirection. these arguments can be pointers working their way down from a GQL query
 	// no telling where, and to what these can be changed
 	mktOK, prtOK := true, true
-	var mktLC, mktUC, pidLC, pidUC string
+	var mkt, pid string
 	if market != nil {
 		mktOK = false
-		mktLC = strings.ToLower(*market)
-		mktUC = strings.ToUpper(mktLC)
+		mkt = *market
 	}
 	if party != nil {
 		prtOK = false
-		pidLC = strings.ToLower(*party)
-		pidUC = strings.ToUpper(pidLC)
+		pid = *party
 	}
 	ch, ref := lp.observer.Observe(
 		ctx,
 		retries,
 		func(lp entities.LiquidityProvision) bool {
-			if !prtOK {
-				// filter by party, check party
-				if pID := lp.PartyID.String(); pID != pidLC && pID != pidUC {
-					// party ID does not match upper/lower case party ID from query
-					return false
-				}
+			// prtOK is false indicates a party ID was specified
+			if !prtOK && lp.PartyID.String() != pid {
+				// partyID does not match, return false
+				return false
 			}
-			if !mktOK {
-				// we need to check market ID's
-				if lpID := lp.MarketID.String(); lpID != mktLC && lpID != mktUC {
-					// market ID != upper or lower-case query ID
-					return false
-				}
+			// same as prtOK: if market was specified, and doesn't match the LP market, return false
+			if !mktOK && lp.MarketID.String() != mkt {
+				return false
 			}
 			// all checks passed, or none were needed
 			return true
