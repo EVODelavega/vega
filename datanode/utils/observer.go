@@ -176,7 +176,6 @@ func (o *Observer[T]) Observe(ctx context.Context, retries int, filter func(T) b
 				}
 				close(out)
 				return
-
 			case values, ok := <-in:
 				if !ok {
 					// 'in' channel may get closed because Notify() couldn't write to it

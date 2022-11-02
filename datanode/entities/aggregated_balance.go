@@ -138,30 +138,12 @@ func (balance *AggregatedBalance) ToProto() *v2.AggregatedBalance {
 }
 
 func (balance AggregatedBalance) Cursor() *Cursor {
-	// pointers need to be copied
-	var partyID, assetID, marketID, accID *string
-	if balance.AccountID != nil {
-		cpy := balance.AccountID.String()
-		accID = &cpy
-	}
-	if balance.PartyID != nil {
-		cpy := balance.PartyID.String()
-		partyID = &cpy
-	}
-	if balance.AssetID != nil {
-		cpy := balance.AssetID.String()
-		assetID = &cpy
-	}
-	if balance.MarketID != nil {
-		cpy := balance.MarketID.String()
-		marketID = &cpy
-	}
 	return NewCursor(AggregatedBalanceCursor{
 		VegaTime:  balance.VegaTime,
-		AccountID: accID,
-		PartyID:   partyID,
-		AssetID:   assetID,
-		MarketID:  marketID,
+		AccountID: balance.AccountID,
+		PartyID:   balance.PartyID,
+		AssetID:   balance.AssetID,
+		MarketID:  balance.MarketID,
 		Type:      balance.Type,
 	}.String())
 }
