@@ -926,7 +926,7 @@ func (r *myQueryResolver) ProposalsConnection(ctx context.Context, proposalType 
 	return handleProposalsRequest(ctx, r.tradingDataClientV2, nil, nil, proposalType, inState, pagination)
 }
 
-func (r *myQueryResolver) Proposal(ctx context.Context, id *string, reference *string) (*types.Proposal, error) {
+func (r *myQueryResolver) Proposal(ctx context.Context, id *string, reference *string) (*v2.ProposalData, error) {
 	if id == nil && reference == nil {
 		return nil, ErrMissingIDOrReference
 	}

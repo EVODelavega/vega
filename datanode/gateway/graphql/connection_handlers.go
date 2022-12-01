@@ -126,7 +126,7 @@ func handleProposalsRequest(ctx context.Context, client TradingDataServiceClient
 		ProposalState:     inState,
 		Pagination:        pagination,
 	}
-	resp, err := client.ListProposals(cttx, &req)
+	resp, err := client.ListProposals(ctx, &req)
 	if err != nil {
 		return nil, err
 	}

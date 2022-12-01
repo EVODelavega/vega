@@ -93,7 +93,7 @@ func (vs *Votes) Add(ctx context.Context, v entities.Vote) error {
 	defer metrics.StartSQLQuery("Votes", "Add")()
 	// this is a bit clunky but if we could not set the totals properly, we probably are dealing with a vote
 	// for a proposal that doesn't exist yet, or something is seriously wrong
-	if err := vs.addTotal(ctx, c); err != nil {
+	if err := vs.addTotal(ctx, v); err != nil {
 		return err
 	}
 	_, err := vs.Connection.Exec(ctx,
