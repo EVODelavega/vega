@@ -253,6 +253,14 @@ func (r RowWrapper) U64B(name string) (uint64, bool) {
 	return r.U64(name), true
 }
 
+// UIB does the same as Uint, but returns a bool if the column was not set.
+func (r RowWrapper) UIB(name string) (*num.Uint, bool) {
+	if !r.HasColumn(name) {
+		return nil, false
+	}
+	return r.Uint(name), true
+}
+
 func (r RowWrapper) U64(name string) uint64 {
 	value, err := U64(r.values[name])
 	panicW(name, err)

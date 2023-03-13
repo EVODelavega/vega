@@ -18,6 +18,7 @@ import (
 	"github.com/cucumber/godog"
 
 	"code.vegaprotocol.io/vega/core/integration/stubs"
+	"code.vegaprotocol.io/vega/libs/num"
 	types "code.vegaprotocol.io/vega/protos/vega"
 )
 
@@ -28,10 +29,10 @@ func ThePartiesShouldHaveTheFollowingMarginLevels(
 	for _, row := range parseExpectedMarginsTable(table) {
 		partyID := row.MustStr("party")
 		marketID := row.MustStr("market id")
-		maintenance := row.MustU64("maintenance")
-		search, hasSearch := row.U64B("search")
-		initial, hasInitial := row.U64B("initial")
-		release, hasRelease := row.U64B("release")
+		maintenance := row.Uint("maintenance")
+		search, hasSearch := row.UIB("search")
+		initial, hasInitial := row.UIB("initial")
+		release, hasRelease := row.UIB("release")
 
 		levels, err := broker.GetMarginByPartyAndMarket(partyID, marketID)
 		if err != nil {
@@ -39,16 +40,16 @@ func ThePartiesShouldHaveTheFollowingMarginLevels(
 		}
 
 		var hasError bool
-		if stringToU64(levels.MaintenanceMargin) != maintenance {
+		if levels.MaintenanceMargin != maintenance.String() {
 			hasError = true
 		}
-		if hasSearch && stringToU64(levels.SearchLevel) != search {
+		if hasSearch && levels.SearchLevel != search.String() {
 			hasError = true
 		}
-		if hasInitial && stringToU64(levels.InitialMargin) != initial {
+		if hasInitial && levels.InitialMargin != initial.String() {
 			hasError = true
 		}
-		if hasRelease && stringToU64(levels.CollateralReleaseLevel) != release {
+		if hasRelease && levels.CollateralReleaseLevel != release.String() {
 			hasError = true
 		}
 		if hasError {
@@ -63,16 +64,16 @@ func errCannotGetMarginLevelsForPartyAndMarket(partyID, market string, err error
 }
 
 func errInvalidMargins(
-	maintenance, search, initial, release uint64,
+	maintenance, search, initial, release *num.Uint,
 	levels types.MarginLevels,
 	partyID string,
 ) error {
 	return formatDiff(fmt.Sprintf("invalid margins for party \"%s\"", partyID),
 		map[string]string{
-			"maintenance": u64ToS(maintenance),
-			"search":      u64ToS(search),
-			"initial":     u64ToS(initial),
-			"release":     u64ToS(release),
+			"maintenance": uiToS(maintenance),
+			"search":      uiToS(search),
+			"initial":     uiToS(initial),
+			"release":     uiToS(release),
 		},
 		map[string]string{
 			"maintenance": levels.MaintenanceMargin,
@@ -94,4 +95,11 @@ func parseExpectedMarginsTable(table *godog.Table) []RowWrapper {
 		"release",
 	},
 	)
+}
+
+func uiToS(v *num.Uint) string {
+	if v == nil {
+		return ""
+	}
+	return v.String()
 }
