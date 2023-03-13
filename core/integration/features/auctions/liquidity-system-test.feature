@@ -31,6 +31,8 @@ Feature: Recreate a simple system test with exact setup
       | party1 | ETH   | 100000000000000000000000000      |
       | party2 | ETH   | 100000000000000000000000000      |
       | party3 | ETH   | 100000000000000000000000000      |
+      | party4 | ETH   | 100000000000000000000000000      |
+      | party5 | ETH   | 100000000000000000000000000      |
       | lp0    | ETH   | 10000000000000000000000000000000 |
 
 
@@ -54,7 +56,6 @@ Feature: Recreate a simple system test with exact setup
     And the market data for the market "ETH/DEC19" should be:
       | mark price | trading mode            | target stake      | supplied stake       | open interest |
       | 976        | TRADING_MODE_CONTINUOUS | 13490760000000000 | 39050000000000000000 | 5             |
-
     # Check margin levels, balances, and position data
     Then the parties should have the following profit and loss:
       | party  | volume | unrealised pnl | realised pnl |
@@ -72,6 +73,33 @@ Feature: Recreate a simple system test with exact setup
       | party1 | ETH   | ETH/DEC19 | 20564349807996133      | 99999999979435650192003867      |                      |
       | lp0    | ETH   | ETH/DEC19 | 2406981135396343225632 | 9999999997553968864603656774368 | 39050000000000000000 |
 
+    # Now move mark price, and get party0 low
+    When the parties place the following orders with ticks:
+      | party  | market id | side | volume | price  | resulting trades | type       | tif     | reference |
+      | party4 | ETH/DEC19 | buy  | 5      | 900    | 0                | TYPE_LIMIT | TIF_GTC | oa-b-4    |
+      | party5 | ETH/DEC19 | sell | 5      | 900    | 1                | TYPE_LIMIT | TIF_GTC | oa-s-4    |
+    And the parties should have the following margin levels:
+      | party  | market id | maintenance            | search                 | initial                | release                |
+      | party0 | ETH/DEC19 | 9450190458676863       | 10395209504544549      | 11340228550412235      | 13230266642147608      |
+      | party1 | ETH/DEC19 | 17136958173330111      | 18850653990663122      | 20564349807996133      | 23991741442662155      |
+      | lp0    | ETH/DEC19 | 1849626897077108011500 | 2034589586784818812650 | 2219552276492529613800 | 2589477655907951216100 |
+      | party4 | ETH/DEC19 | 2568268390307665       | 2825095229338431       | 3081922068369198       | 3595575746430731       |
+      | party5 | ETH/DEC19 | 2698617351513687       | 2968479086665055       | 3238340821816424       | 3778064292119161       |
+    And the parties should have the following account balances:
+      | party  | asset | market id | margin                 | general                         | bond                 |
+      | party0 | ETH   | ETH/DEC19 | 11340228550412235      | 99999999988839771449587765      |                      |
+      | party1 | ETH   | ETH/DEC19 | 20564349807996133      | 99999999979435650192003867      |                      |
+      | lp0    | ETH   | ETH/DEC19 | 2406981135396343225632 | 9999999997553968864603656774368 | 39050000000000000000 |
+      | party4 | ETH   | ETH/DEC19 | 3081922068369198       | 99999999996918077931630802      |                      |
+      | party5 | ETH   | ETH/DEC19 | 3238340821816424       | 99999999983036659178183576      |                      |
+    When the network moves ahead "15" blocks
+    Then the parties should have the following profit and loss:
+      | party  | volume | unrealised pnl    | realised pnl |
+      | party0 | 10     | -3800000000000000 | 0            |
+      | party1 | -5     | 3800000000000000  | 0            |
+      | lp0    | 0      | 0                 | 0            |
+      | party5 | -5     | 0                 | 0            |
+      #| party4 | 5      | 0              | 0            |
     # add a few pegged orders now
     When the parties place the following orders with ticks:
       | party  | market id | side | volume | price | resulting trades | type       | tif     | reference | expires in |
@@ -81,28 +109,30 @@ Feature: Recreate a simple system test with exact setup
       | party3 | ETH/DEC19 | sell | 1      | 980   | 0                | TYPE_LIMIT | TIF_GTC | t3-2      |            |
     Then the market data for the market "ETH/DEC19" should be:
       | mark price | trading mode            | target stake      | supplied stake       | open interest |
-      | 976        | TRADING_MODE_CONTINUOUS | 16255260000000000 | 39050000000000000000 | 6             |
+      | 900        | TRADING_MODE_CONTINUOUS | 29801310000000000 | 39050000000000000000 | 11            |
 
     When the network moves ahead "5" blocks
     # Check margin levels, balances, and position data again
     Then the parties should have the following profit and loss:
-      | party  | volume | unrealised pnl | realised pnl |
-      | lp0    | 0      | 0              | 0            |
-      | party0 | 5      | 0              | 0            |
-      | party1 | -5     | 0              | 0            |
+      | party  | volume | unrealised pnl    | realised pnl |
+      | party0 | 10     | -3800000000000000 | 0            |
+      | party1 | -5     | 3800000000000000  | 0            |
+      | party5 | -5     | 0                 | 0            |
+      | lp0    | 0      | 0                 | 0            |
       #| party2 | 1      | 0              | 0            |
       #| party3 | -1     | 0              | 0            |
     And the parties should have the following margin levels:
       | party  | market id | maintenance            | search                 | initial                | release                |
-      | party0 | ETH/DEC19 | 9450190458676863       | 10395209504544549      | 11340228550412235      | 13230266642147608      |
-      | party1 | ETH/DEC19 | 17136958173330111      | 18850653990663122      | 20564349807996133      | 23991741442662155      |
+      | party0 | ETH/DEC19 | 49170216611484812      | 54087238272633293      | 59004259933781774      | 68838303256078736      |
+      | party1 | ETH/DEC19 | 20474654053275718      | 22522119458603289      | 24569584863930861      | 28664515674586005      |
       | lp0    | ETH/DEC19 | 2014038176817295390300 | 2215441994499024929330 | 2416845812180754468360 | 2819653447544213546420 |
-      | party2 | ETH/DEC19 | 1027307356123066       | 1130038091735372       | 1232768827347679       | 1438230298572292       |
+      | party2 | ETH/DEC19 | 947312111179057        | 1042043322296962       | 1136774533414868       | 1326236955650679       |
       | party3 | ETH/DEC19 | 3043870903476809       | 3348257993824489       | 3652645084172170       | 4261419264867532       |
     And the parties should have the following account balances:
       | party  | asset | market id | margin                 | general                         | bond                 |
-      | party0 | ETH   | ETH/DEC19 | 11340228550412235      | 99999999988659771449587765      |                      |
-      | party1 | ETH   | ETH/DEC19 | 20564349807996133      | 99999999979435650192003867      |                      |
-      | lp0    | ETH   | ETH/DEC19 | 2406981135396343225632 | 9999999997553971804603656774368 | 39050000000000000000 |
-      | party2 | ETH   | ETH/DEC19 | 1232768827347679       | 99999999998806431172652321      |                      |
+      | party0 | ETH   | ETH/DEC19 | 59004259933781774      | 99999999937375740066218226      |                      |
+      | party1 | ETH   | ETH/DEC19 | 24364349807996133      | 99999999979435650192003867      |                      |
+      | lp0    | ETH   | ETH/DEC19 | 2406981135396343225632 | 9999999997553985304603656774368 | 39050000000000000000 |
+      | party2 | ETH   | ETH/DEC19 | 1136774533414868       | 99999999998902425466585132      |                      |
       | party3 | ETH   | ETH/DEC19 | 3652645084172170       | 99999999993358354915827830      |                      |
+    And debug detailed orderbook volumes for market "ETH/DEC19"
