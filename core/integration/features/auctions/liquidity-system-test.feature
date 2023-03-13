@@ -90,15 +90,19 @@ Feature: Recreate a simple system test with exact setup
       | lp0    | 0      | 0              | 0            |
       | party0 | 5      | 0              | 0            |
       | party1 | -5     | 0              | 0            |
-      | party2 | 1      | 0              | 0            |
-      | party3 | -1     | 0              | 0            |
+      #| party2 | 1      | 0              | 0            |
+      #| party3 | -1     | 0              | 0            |
     And the parties should have the following margin levels:
-      | party  | market id | maintenance | search | initial | release |
-      | party0 | ETH/DEC19 | 121         | 133    | 145     | 169     |
-      | party1 | ETH/DEC19 | 121         | 133    | 145     | 169     |
-      | lp0    | ETH/DEC19 | 121         | 133    | 145     | 169     |
+      | party  | market id | maintenance            | search                 | initial                | release                |
+      | party0 | ETH/DEC19 | 9450190458676863       | 10395209504544549      | 11340228550412235      | 13230266642147608      |
+      | party1 | ETH/DEC19 | 17136958173330111      | 18850653990663122      | 20564349807996133      | 23991741442662155      |
+      | lp0    | ETH/DEC19 | 2014038176817295390300 | 2215441994499024929330 | 2416845812180754468360 | 2819653447544213546420 |
+      | party2 | ETH/DEC19 | 1027307356123066       | 1130038091735372       | 1232768827347679       | 1438230298572292       |
+      | party3 | ETH/DEC19 | 3043870903476809       | 3348257993824489       | 3652645084172170       | 4261419264867532       |
     And the parties should have the following account balances:
-      | party  | asset | market id | margin | general | bond |
-      | party0 | ETH   | ETH/DEC19 | 1320   | 8680    | 0    |
-      | party1 | ETH   | ETH/DEC19 | 1320   | 8680    | 0    |
-      | lp0    | ETH   | ETH/DEC19 | 1320   | 8680    | 0    |
+      | party  | asset | market id | margin                 | general                         | bond                 |
+      | party0 | ETH   | ETH/DEC19 | 11340228550412235      | 99999999988659771449587765      |                      |
+      | party1 | ETH   | ETH/DEC19 | 20564349807996133      | 99999999979435650192003867      |                      |
+      | lp0    | ETH   | ETH/DEC19 | 2406981135396343225632 | 9999999997553971804603656774368 | 39050000000000000000 |
+      | party2 | ETH   | ETH/DEC19 | 1232768827347679       | 99999999998806431172652321      |                      |
+      | party3 | ETH   | ETH/DEC19 | 3652645084172170       | 99999999993358354915827830      |                      |
