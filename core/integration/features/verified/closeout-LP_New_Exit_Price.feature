@@ -110,7 +110,26 @@ Feature: Replicate a scenario from Lewis with Elias' implementation on Exit_pric
     And the market data for the market "ETH/DEC20" should be:
       | mark price | trading mode                    | auction trigger                            | target stake | supplied stake | open interest |
       | 50         | TRADING_MODE_MONITORING_AUCTION | AUCTION_TRIGGER_UNABLE_TO_DEPLOY_LP_ORDERS | 199186       | 0              | 112           |
-     
+
+    When the parties place the following orders with ticks:
+      | party   | market id | side | volume | price | resulting trades | type       | tif     |
+      | traderA | ETH/DEC20 | buy  | 11    | 50    | 0                | TYPE_LIMIT | TIF_GTC |
+      | traderA | ETH/DEC20 | buy  | 10    | 51    | 0                | TYPE_LIMIT | TIF_GFA |
+    
+    And the market data for the market "ETH/DEC20" should be:
+      | mark price | trading mode                    | auction trigger                            | target stake | supplied stake | open interest |
+      | 50         | TRADING_MODE_MONITORING_AUCTION | AUCTION_TRIGGER_UNABLE_TO_DEPLOY_LP_ORDERS | 199186       | 0              | 112           |
+
+    Then the order book should have the following volumes for market "ETH/DEC20":
+      | side | price | volume |
+      | buy  | 29    | 0      |
+      | buy  | 49    | 1      |
+      | buy  | 50    | 11     |
+      | buy  | 51    | 10     |
+      | sell | 2000  | 0      |
+      | sell | 2020  | 0      |
+      | sell | 3000  | 0      |
+  
     And the insurance pool balance should be "0" for the market "ETH/DEC20"
 
   Scenario: 002 Replicate a scenario from Lewis, linear slippage factor = 1e0, quadratic slippage factor = 1e2
