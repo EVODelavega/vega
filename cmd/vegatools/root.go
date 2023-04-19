@@ -16,6 +16,7 @@ type RootCmd struct {
 	Snapshot   snapshotCmd   `command:"snapshot" description:"Display information about saved snapshots"`
 	Checkpoint checkpointCmd `command:"checkpoint" description:"Make checkpoint human-readable, or generate checkpoint from human readable format"`
 	Stream     streamCmd     `command:"stream" description:"Stream events from vega node"`
+	Protofuzz  protofuzzCmd  `command:"protofuzz" description:"generate proto messages with random values"`
 }
 
 var rootCmd RootCmd

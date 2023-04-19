@@ -49,6 +49,7 @@
 - [8022](https://github.com/vegaprotocol/vega/issues/8022) - Improve `ListTransfers` API documentation.
 - [8154](https://github.com/vegaprotocol/vega/issues/8154) - Visor - added option for delaying stop of binaries.
 - [8169](https://github.com/vegaprotocol/vega/issues/8169) - Add `buf` format
+- [6922](https://github.com/vegaprotocol/vega/issues/6922) - Add protofuzz tool.
 
 ### 🐛 Fixes
 
