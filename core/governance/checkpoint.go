@@ -75,13 +75,14 @@ func (e *Engine) Load(ctx context.Context, data []byte) error {
 
 	latestUpdateMarketProposals := map[string]*types.Proposal{}
 	updatedMarketIDs := []string{}
+	successors := map[string]*firstSuccessor{}
+	parentIDs := []string{}
 	for _, p := range cp.Proposals {
 		prop, err := types.ProposalFromProto(p)
 		if err != nil {
 			return err
 		}
 
-		successors := map[string]*firstSuccessor{}
 		switch prop.Terms.Change.GetTermType() {
 		case types.ProposalTermsTypeNewMarket:
 			toEnact := false
@@ -92,7 +93,7 @@ func (e *Engine) Load(ctx context.Context, data []byte) error {
 			if pid, ok := prop.Terms.GetNewMarket().ParentMarketID(); ok {
 				if first, ok := successors[pid]; ok {
 					// check if this proposal was enacted first
-					if first.enactment.After(prop.Terms.EnactmentTimestamp) {
+					if first.enactment > prop.Terms.EnactmentTimestamp {
 						first.isEnacted = toEnact
 						first.prop = prop.DeepClone()
 						first.enactment = prop.Terms.EnactmentTimestamp
@@ -104,6 +105,8 @@ func (e *Engine) Load(ctx context.Context, data []byte) error {
 						prop:      prop.DeepClone(),
 						isEnacted: toEnact,
 					}
+					// preserve order in which the proposals are submitted/enacted
+					parentIDs = append(parentIDs, pid)
 				}
 				// successors should be enacted after all parent markets, otherwise it is possible
 				// for the successor market not to have a parent in the execution engine
@@ -149,7 +152,8 @@ func (e *Engine) Load(ctx context.Context, data []byte) error {
 		})
 	}
 	minEnactTS := now.Add(duration).Unix()
-	for pid, first := range successors {
+	for _, pid := range parentIDs {
+		first := successors[pid]
 		prop := first.prop
 		enct := &enactmentTime{
 			shouldNotVerify: first.isEnacted,

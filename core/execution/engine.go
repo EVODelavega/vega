@@ -298,17 +298,9 @@ func (e *Engine) StartOpeningAuction(ctx context.Context, marketID string) error
 	if err != nil {
 		return err
 	}
-	// proposal was accepted, meaning the vote was closed, there may still be some time left to enact it
-	mDef := mkt.mkt
-	if len(mDef.ParentMarketID) == 0 {
-		return nil
-	}
-	// see if the parent market is still around
-	if _, ok := e.GetMarket(mDef.ParentMarketID, true); !ok {
-		// there is no parent market anywhere, this market is now treated as a regular non-successor market
-		mkt.mkt.ParentMarketID = ""
-		mkt.mkt.InsurancePoolFraction = num.DecimalZero()
-	}
+	// proposal was accepted, the parent market should not be checked here, it'll reach the correct state
+	// either before this (in case of restore) or when calling SucceedMarket. If neither are called,
+	// this proposal doesn't need to have the ParentMarketID checked.
 	return nil
 }
 
@@ -331,13 +323,13 @@ func (e *Engine) restoreOwnState(ctx context.Context, mID string) (bool, error) 
 				pMkt.succeeded = true
 			}
 			for _, pending := range e.successors[pid] {
-				if pending == successor {
+				if pending == mID {
 					continue
 				}
 				e.RejectMarket(ctx, pending)
 			}
 			delete(e.successors, pid)
-			delete(e.isSuccessor, mkt.mkt.ID)
+			delete(e.isSuccessor, mID)
 		}
 		return true, nil
 	}
@@ -438,13 +430,13 @@ func (e *Engine) RestoreMarket(ctx context.Context, marketConfig *types.Market) 
 		return err
 	}
 	// attempt to restore market state. The restoreOwnState call handles both parent and successor markets
-	ok, err := e.restoreOwnState(ctx, marketConfig.mkt.ID)
+	ok, err := e.restoreOwnState(ctx, marketConfig.ID)
 	if ok || err != nil {
 		return err
 	}
 	// this is a successor market, handle accordingly
 	if pid := marketConfig.ParentMarketID; len(pid) > 0 {
-		return e.succeedOrRestore(ctx, marketConfig.mkt.ID, pid, marketConfig.mkt.InsurancePoolFraction, true)
+		return e.succeedOrRestore(ctx, marketConfig.ID, pid, marketConfig.InsurancePoolFraction, true)
 	}
 	return nil
 }
@@ -461,15 +453,15 @@ func (e *Engine) submitOrRestoreMarket(ctx context.Context, marketConfig *types.
 	if err := e.submitMarket(ctx, marketConfig); err != nil {
 		return err
 	}
-	if len(marketConfig.ParentMarketID) > 0 {
-		ss, ok := e.successors[parentMarketID]
+	if pid := marketConfig.ParentMarketID; len(pid) > 0 {
+		ss, ok := e.successors[pid]
 		if !ok {
 			ss = make([]string, 0, 5)
 		}
-		id := marketConfig.GetID()
+		id := marketConfig.ID
 		// add successor market to the successors, so we know which markets to get rid off once one successor is enacted
-		e.successors[parentMarketID] = append(ss, id)
-		e.isSuccessor[id] = parentMarketID
+		e.successors[pid] = append(ss, id)
+		e.isSuccessor[id] = pid
 	}
 
 	if isNewMarket {
