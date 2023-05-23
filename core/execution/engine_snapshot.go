@@ -109,6 +109,7 @@ func (e *Engine) restoreMarket(ctx context.Context, em *types.ExecMarket) (*Mark
 		)
 		return nil, err
 	}
+	mkt.succeeded = em.IsSucceeded
 
 	e.markets[marketConfig.ID] = mkt
 	e.marketsCpy = append(e.marketsCpy, mkt)

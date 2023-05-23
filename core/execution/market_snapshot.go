@@ -223,6 +223,7 @@ func (m *Market) getState() *types.ExecMarket {
 		NextMTM:                    m.nextMTM.UnixNano(),
 		Parties:                    parties,
 		Closed:                     m.closed,
+		IsSucceeded:                m.succeeded,
 	}
 
 	return em
