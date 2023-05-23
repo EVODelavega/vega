@@ -379,9 +379,9 @@ func (e *Engine) succeedOrRestore(ctx context.Context, successor, parent string,
 			parentState = pmo.GetCPState()
 		}
 	}
-	if !mkt.mkt.InsurancePoolFraction.IsZero() {
+	if !insuranceFraction {
 		assets, _ := mkt.mkt.GetAssets()
-		lm := e.collateral.SuccessorInsuranceFraction(ctx, successor, parent, assets[0], mkt.mkt.InsurancePoolFraction)
+		lm := e.collateral.SuccessorInsuranceFraction(ctx, successor, parent, assets[0], insuranceFraction)
 		e.broker.Send(events.NewLedgerMovements(ctx, []*types.LedgerMovement{lm}))
 	}
 	// pass in the ELS and the like
