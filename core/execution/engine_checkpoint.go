@@ -19,7 +19,6 @@ func (e *Engine) Checkpoint() ([]byte, error) {
 		e.marketCPStates[id] = state
 	}
 	data := make([]*types.CPMarketState, 0, len(e.marketCPStates))
-	// @TODO prune the marketCPStates
 	for _, s := range e.marketCPStates {
 		data = append(data, s)
 	}
